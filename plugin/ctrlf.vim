@@ -1,4 +1,5 @@
 set rtp+=~/AppData/Local/nvim/plugged/ctrlf
+set rtp+=~/.config/nvim/plugged/ctrlf
 fun! CtrlF()
 	lua for k in pairs(package.loaded) do if k:match("^ctrlf") then package.loaded[k] = nil end end
 	lua require("ctrlf").ctrlf()
