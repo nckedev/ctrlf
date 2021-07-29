@@ -1,26 +1,30 @@
+-- Features
+-- highlighting
+--  -closest: green
+--  -rest:    blue
+--  -no match: gray
+-- bias search direction (default x bias atm)
+-- smartcase (if search input contains UPPER chars then casesensitive otherwise not
+-- ignore wierd chars like _.{([ etc for faster typing (maybe replace with space)
+-- fix tab confirm (tab repeat search)
+--
+--
 --vim.api.nvim_buf_set_text(buffer, start_row, start_row, end_row, end_col, replace)
 --vim.api.nvim_buf_add_highlight(buffer,nsid,hlgrp,line,colstart,colend)
 --namespace
 --disable keymaps? no need with getchar, consumes all input
-local function get_cursor_pos()
-	local p = vim.api.nvim_win_get_cursor(0)
-	local pos = { x = p[1], y = p[2] }
-	return pos
-end
+
+local window = require "window"
 
 local function get_buf(nr, start, stop)
 	nr = nr or 0
 	start = start or 0
 	stop = stop or -1
-	return vim.api.nvim_buf_get_lines(nr, start, stop, false)
+
+	--0 based indexing, stop - 1 aswell?
+	return vim.api.nvim_buf_get_lines(nr, start - 1, stop, false)
 end
 
-local function get_visible_lines_range(window)
-	window = window or vim.api.nvim_get_current_win()
-	local win_info = vim.fn.getwininfo(window)[1]
-	local win = { top = win_info.topline,  bottom = win_info.botline }
-	return win
-end
 
 local function get_buf_nr()
 	local bufnr = vim.api.nvim_get_current_buf()
@@ -63,6 +67,8 @@ local function get_input_wo_prompt()
 			print ("backpace")
 			return backspace
 			--s = string.sub(s,1, #s -1)
+		else
+			return -1
 		end
 	end
 	return 0
@@ -78,35 +84,81 @@ end
 local function clear_hints()
 end
 
-local function find(needle, haystack)
+local function find(buf_handle, needle)
 	--return list of (row,col) of first character where needle is founqd
-end
-local function jump(win, target)
-	win = win or 0
+	-- test string : key hello world mumbojumbo k ke key "hello world"
+	local win = window.get_visible_lines_range()
+	local buffer = get_buf(buf_handle, win.top, win.bottom)
+	local matches = {}
+	for i,line in ipairs(buffer) do
+		local len = #line
+		local start = 0
+		local stop = 0
+		while stop ~= nil do
+			start, stop = string.find(line, needle, stop, true)
+			if start and stop then
+				table.insert(matches, {line=i, start=start - 1, stop=stop })
+			end
+		end
 
+	end
+	--print(vim.inspect(matches))
+	return matches
+end
+
+local function jump(target)
+	local window = vim.api.nvim_get_current_win()
+	local win_info = vim.fn.getwininfo(window)[1]
 	-- register current pos berfore jumping
 	-- to add it to the jumplist
     vim.cmd("normal! m'")
-	vim.api.nvim_win_set_cursor(win, target)
+
+	vim.api.nvim_win_set_cursor(window, {target.row + win_info.topline - 1, target.col})
+	-- print(vim.inspect(target))
 end
 
+
+local function closest_match(matches, direction, x_bias, y_bias)
+	--returnd (row, col) of the closest (manhattan distance)  match
+	--prioritize same line?
+	-- direction -1 for backwards, 0 for both ways and 1 for forward
+	-- abs(x1 -x2) + abs(y1 - y2)
+
+	-- TODO implement direction
+	if not matches then
+		return 
+	end
+	local dir = direction or 0
+	local x_b = x_bias or 10
+	local y_b = y_bias or 1
+	local pos = window.get_cursor_pos()
+	local min = 99999999
+	local best = 0
+
+	print("matches: " .. #matches)
+
+	for _,v in pairs(matches) do
+		local candidate = x_b * math.abs(pos.row - (v.line + window.get_line_offset())) + y_b * math.abs(pos.col - v.start)
+		if candidate < min then
+			min = candidate
+			best = { row = v.line, col = v.start }
+		end
+end
+	return best
+end
+
+
 local function ctrlf()
-	local pos = get_cursor_pos()
-	local bufnr = get_buf_nr()
-	local buffer = get_buf(bufnr, pos.x, pos.x +1)
-	--print(get_input_wo_prompt())
-	--local s = get_input("Search > ")
-	-- print('\r\n' .. s)
-	-- print(pos.x .. " " .. pos.y)
-	-- for k,v in pairs(buffer) do
-	-- 	print(k .. " " .. v)
-	-- end
+	local pos = window.get_cursor_pos()
+	local buf_handle = get_buf_nr()
+	local buffer = get_buf(buf_handle, pos.row, pos.row +1)
 
 	local needle = ""
-	while 1 do
+	for i=1, 1000 do
 		local t = get_input_wo_prompt()
 		if type(t) == "string" then
 			needle = needle .. t
+			-- print(needle)
 		elseif type(t) == "number" then
 			if t == -2 then
 				--backspace
@@ -117,14 +169,25 @@ local function ctrlf()
 				break
 			elseif t == 1 then
 				--confirm
+				-- vim.api.nvim_input("<cr>")
+				break
+			else
 				break
 			end
 		end
 	end
-	print(needle)
+	--print(vim.inspect(find(buf_handle, needle)))
+	local matches = find(buf_handle, needle)
+	if #matches > 0 then
+		local a = closest_match(matches)
+		jump(a)
+	else
+		print("no matches")
+	--vim.api.nvim_input("<cr>")
+	end
 end
 
 return {
 	ctrlf = ctrlf
 }
-
+--asd
