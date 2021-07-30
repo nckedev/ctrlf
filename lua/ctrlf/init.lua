@@ -3,18 +3,25 @@
 --  -closest: green
 --  -rest:    blue
 --  -no match: gray
--- bias search direction (default x bias atm)
--- smartcase (if search input contains UPPER chars then casesensitive otherwise not
--- ignore wierd chars like _.{([ etc for faster typing (maybe replace with space)
--- fix tab confirm (tab repeat search)
 --
+-- bias search direction (default x bias atm)
+--
+-- smartcase (if search input contains UPPER chars then casesensitive otherwise not
+--
+-- ignore wierd chars like _.{([ etc for faster typing 
+-- 		space as wildcard maybe?
+--
+-- fix tab confirm (tab to move to next match, s-tab for prev in buffer)
+--
+-- move to match_pos - 1 (ctrl-t maybe?) good when using with d,y etc
 --
 --vim.api.nvim_buf_set_text(buffer, start_row, start_row, end_row, end_col, replace)
 --vim.api.nvim_buf_add_highlight(buffer,nsid,hlgrp,line,colstart,colend)
 --namespace
---disable keymaps? no need with getchar, consumes all input
 
 local window = require "window"
+local defaults = require "defaults"
+local keys = { confirm = "confirm", backspace = "backspace", cancel = "cancel" }
 
 local function get_buf(nr, start, stop)
 	nr = nr or 0
@@ -42,40 +49,46 @@ local function get_input_wo_prompt()
 	-- space = 32
 	-- enter = 13
 	-- backspace = ?
+	-- tab = 9
+	-- 33 to 126 = valid chars
 	-- if escape cancel seach
 	-- if space or enter jump to closest match (manhattan distance?)
 	-- if hits pressed then jump
-	local s = ""
-	local cancel = -1
-	local backspace = -2
+	-- TODO bricks when press esc wo any other input?	
 	local ok, key = pcall(vim.fn.getchar)
 	if not ok then
 		--clear hl
-		return cancel
+		print ("some sort of error in get_input_wo_prompt")
+		return keys.cancel
 	end
+	print("...." .. key)
 	if type(key) == "number" then
 		if (key == 27) then
-			return cancel
-		elseif (key == 13 or key == 32) then
-			return 1
-		end
-		key = vim.fn.nr2char(key)
-		return key
-	elseif key:byte() == 128 then
-		local special_key = string.sub(key,2)
-		if special_key == "kb" then
-			print ("backpace")
-			return backspace
-			--s = string.sub(s,1, #s -1)
+			print("escape 27")
+			return keys.cancel
+		elseif (key == 13 or key == 32 or key == 9) then
+			return keys.confirm
 		else
-			return -1
+			return vim.fn.nr2char(key)
 		end
+	elseif key:byte() >= 128 then
+		if key == vim.api.nvim_replace_termcodes("<backspace>",true, false, true) then
+			print("backspace")
+			return keys.backspace
+			-- local special_key = string.sub(key,2)
+			-- if special_key == "kb" then
+			-- 	print ("backpace")
+			-- 	return keys.backspace
+			--s = string.sub(s,1, #s -1)
+		else 
+			return keys.cancel
+		end
+	else
+		return 0
 	end
-	return 0
 	--return "("..s:gsub('[%c]','') .. ")"
 	--return s:gsub('[%c]','')
 end
-
 
 local function hint(buffer)
 	local hint_keys = "fjghdkslaörutyvnbmcireowpqåc,x.z-"
@@ -111,7 +124,7 @@ local function jump(target)
 	local win_info = vim.fn.getwininfo(window)[1]
 	-- register current pos berfore jumping
 	-- to add it to the jumplist
-    vim.cmd("normal! m'")
+	vim.cmd("normal! m'")
 
 	vim.api.nvim_win_set_cursor(window, {target.row + win_info.topline - 1, target.col})
 	-- print(vim.inspect(target))
@@ -135,7 +148,7 @@ local function closest_match(matches, direction, x_bias, y_bias)
 	local min = 99999999
 	local best = 0
 
-	print("matches: " .. #matches)
+	-- print("matches: " .. #matches)
 
 	for _,v in pairs(matches) do
 		local candidate = x_b * math.abs(pos.row - (v.line + window.get_line_offset())) + y_b * math.abs(pos.col - v.start)
@@ -143,7 +156,7 @@ local function closest_match(matches, direction, x_bias, y_bias)
 			min = candidate
 			best = { row = v.line, col = v.start }
 		end
-end
+	end
 	return best
 end
 
@@ -154,39 +167,86 @@ local function ctrlf()
 	local buffer = get_buf(buf_handle, pos.row, pos.row +1)
 
 	local needle = ""
-	for i=1, 1000 do
-		local t = get_input_wo_prompt()
-		if type(t) == "string" then
-			needle = needle .. t
-			-- print(needle)
-		elseif type(t) == "number" then
-			if t == -2 then
-				--backspace
-				needle = string.sub(needle,1, #needle -1)
-			elseif t == -1 then
-				--cancel search
-				needle = ""
+	local special_key = false
+	local cancel = false
+	while 1 do
+		special_key = false
+		local ok, key = pcall(vim.fn.getchar)
+		if not ok then
+			print("error")
+		end
+
+		if type(key) == "number" then
+			if key == 9 or key == 13 then 
 				break
-			elseif t == 1 then
-				--confirm
-				-- vim.api.nvim_input("<cr>")
+			else if key == 27 then
+				cancel = true
 				break
+			end
+		end
+		key = vim.fn.nr2char(key)
+		elseif key:byte() == 128 then
+			print(#key)
+			special_key = true
+		end
+
+		if not special_key and key then
+			needle = needle .. key
+		elseif special_key then
+			if string.sub(key,2) == "kb" then
+				needle = string.sub(needle, 1, #needle - 1)
+				print(needle)
 			else
+				--vim.api.nvim_feedkeys(key, '', true)
+				key = nil
 				break
 			end
 		end
 	end
+
+	--	local t = get_input_wo_prompt()
+	--	if t == nil or t == "" then
+	--		break
+	--	end
+	--	if t == keys.backspace then
+	--		--backspace
+	--		print("backspace")
+	--		if #needle > 0 then needle = string.sub(needle,1, #needle -1) end
+	--	elseif t == keys.cancel then
+	--		--cancel search
+	--		print("cancel")
+	--		needle = ""
+	--		break
+	--	elseif t == keys.confirm then
+	
+	--		-- vim.api.nvim_input("<cr>")
+	--		print("confirm")
+	--		break
+	--	else
+	--		needle = needle .. t
+	--		print(needle)
+
+	--	end
+	--	print("loop")
+	--end
 	--print(vim.inspect(find(buf_handle, needle)))
-	local matches = find(buf_handle, needle)
-	if #matches > 0 then
+
+	if needle:find("[%s]") then 
+		print("shitty chars")
+	end
+	local matches = ""
+	if #needle > 0 then
+		matches = find(buf_handle, needle)
+	end
+	-- local matches = ""
+	if #matches > 0 and not cancel then
 		local a = closest_match(matches)
 		jump(a)
 	else
 		print("no matches")
-	--vim.api.nvim_input("<cr>")
+		--vim.api.nvim_input("<cr>")
 	end
 end
-
 return {
 	ctrlf = ctrlf
 }
