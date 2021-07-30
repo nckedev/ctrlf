@@ -20,7 +20,7 @@
 --namespace
 
 local window = require "window"
-local defaults = require "defaults"
+local opts = require "defaults"
 local keys = { confirm = "confirm", backspace = "backspace", cancel = "cancel" }
 
 local function get_buf(nr, start, stop)
@@ -90,25 +90,23 @@ local function get_input_wo_prompt()
 	--return s:gsub('[%c]','')
 end
 
-local function hint(buffer)
-	local hint_keys = "fjghdkslaörutyvnbmcireowpqåc,x.z-"
-end
-
-local function clear_hints()
-end
-
 local function find(buf_handle, needle)
 	--return list of (row,col) of first character where needle is founqd
 	-- test string : key hello world mumbojumbo k ke key "hello world"
 	local win = window.get_visible_lines_range()
 	local buffer = get_buf(buf_handle, win.top, win.bottom)
 	local matches = {}
+	if opts.enable_wildcard then
+		local replace = vim.api.nvim_replace_termcodes(opts.wildcard_key,true,false,true)
+		needle = string.gsub(needle, replace, ".")
+	end
+
 	for i,line in ipairs(buffer) do
 		local len = #line
 		local start = 0
 		local stop = 0
 		while stop ~= nil do
-			start, stop = string.find(line, needle, stop, true)
+			start, stop = string.find(line, needle, stop, false)
 			if start and stop then
 				table.insert(matches, {line=i, start=start - 1, stop=stop })
 			end
@@ -170,6 +168,7 @@ local function ctrlf()
 	local special_key = false
 	local cancel = false
 	while 1 do
+		--elseif key is in hints
 		special_key = false
 		local ok, key = pcall(vim.fn.getchar)
 		if not ok then
@@ -183,6 +182,7 @@ local function ctrlf()
 				cancel = true
 				break
 			end
+			--elseif key is in hints
 		end
 		key = vim.fn.nr2char(key)
 		elseif key:byte() == 128 then
@@ -204,38 +204,10 @@ local function ctrlf()
 		end
 	end
 
-	--	local t = get_input_wo_prompt()
-	--	if t == nil or t == "" then
-	--		break
-	--	end
-	--	if t == keys.backspace then
-	--		--backspace
-	--		print("backspace")
-	--		if #needle > 0 then needle = string.sub(needle,1, #needle -1) end
-	--	elseif t == keys.cancel then
-	--		--cancel search
-	--		print("cancel")
-	--		needle = ""
-	--		break
-	--	elseif t == keys.confirm then
-	
-	--		-- vim.api.nvim_input("<cr>")
-	--		print("confirm")
-	--		break
-	--	else
-	--		needle = needle .. t
-	--		print(needle)
 
-	--	end
-	--	print("loop")
-	--end
-	--print(vim.inspect(find(buf_handle, needle)))
-
-	if needle:find("[%s]") then 
-		print("shitty chars")
-	end
 	local matches = ""
 	if #needle > 0 then
+		print(needle)
 		matches = find(buf_handle, needle)
 	end
 	-- local matches = ""

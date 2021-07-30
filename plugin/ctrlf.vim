@@ -6,6 +6,7 @@ fun! CtrlF()
 endfun
 
 nnoremap <c-f> <cmd>call CtrlF()<cr>
+noremap <c-s> <cmd>call CtrlF()<cr>
 augroup CtrlF
 	autocmd!
 augroup END

@@ -9,13 +9,16 @@ if expand('%') == '' && !&modified && line('$') <= 1 && getline(1) == ''
 endif
 set shortmess=aoO
 badd +1 ~/.config/nvim/plugged/ctrlf/plugin/ctrlf.vim
-badd +233 init.lua
-badd +137 ~/.config/nvim/plugged/hop.nvim/lua/hop/init.lua
+badd +100 init.lua
+badd +1 ~/.config/nvim/plugged/hop.nvim/lua/hop/init.lua
+badd +6 defaults.lua
+badd +1 window.lua
+badd +11 ~/.config/nvim/plugged/hop.nvim/lua/hop/defaults.lua
 argglobal
 %argdel
 edit init.lua
 argglobal
-balt ~/.config/nvim/plugged/hop.nvim/lua/hop/init.lua
+balt ~/.config/nvim/plugged/hop.nvim/lua/hop/defaults.lua
 setlocal fdm=manual
 setlocal fde=0
 setlocal fmr={{{,}}}
@@ -26,12 +29,12 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 234 - ((23 * winheight(0) + 22) / 45)
+let s:l = 132 - ((28 * winheight(0) + 22) / 45)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 234
-normal! 09|
+keepjumps 132
+normal! 016|
 tabnext 1
 if exists('s:wipebuf') && len(win_findbuf(s:wipebuf)) == 0&& getbufvar(s:wipebuf, '&buftype') isnot# 'terminal'
   silent exe 'bwipe ' . s:wipebuf
@@ -43,6 +46,7 @@ if filereadable(s:sx)
   exe "source " . fnameescape(s:sx)
 endif
 let &g:so = s:so_save | let &g:siso = s:siso_save
+nohlsearch
 doautoall SessionLoadPost
 unlet SessionLoad
 " vim: set ft=vim :
