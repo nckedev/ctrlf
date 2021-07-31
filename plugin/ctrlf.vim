@@ -5,8 +5,9 @@ fun! CtrlF()
 	lua require("ctrlf").ctrlf()
 endfun
 
-nnoremap <c-f> <cmd>call CtrlF()<cr>
-noremap <c-s> <cmd>call CtrlF()<cr>
+noremap <c-f> <cmd>call CtrlF()<cr>
+noremap <tab> <cmd>lua require("ctrlf").ctrlf_next()<cr>
+noremap <s-tab> <cmd>lua require("ctrlf").ctrlf_next(true)<cr>
 augroup CtrlF
 	autocmd!
 augroup END

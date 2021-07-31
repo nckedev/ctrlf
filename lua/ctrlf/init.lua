@@ -8,7 +8,7 @@
 --
 -- smartcase (if search input contains UPPER chars then casesensitive otherwise not
 --
--- ignore wierd chars like _.{([ etc for faster typing 
+-- ignore wierd chars like _.{([ etc for faster typing
 -- 		space as wildcard maybe?
 --
 -- fix tab confirm (tab to move to next match, s-tab for prev in buffer)
@@ -18,7 +18,7 @@
 --vim.api.nvim_buf_set_text(buffer, start_row, start_row, end_row, end_col, replace)
 --vim.api.nvim_buf_add_highlight(buffer,nsid,hlgrp,line,colstart,colend)
 --namespace
-
+test = 0
 local window = require "window"
 local opts = require "defaults"
 local keys = { confirm = "confirm", backspace = "backspace", cancel = "cancel" }
@@ -54,7 +54,7 @@ local function get_input_wo_prompt()
 	-- if escape cancel seach
 	-- if space or enter jump to closest match (manhattan distance?)
 	-- if hits pressed then jump
-	-- TODO bricks when press esc wo any other input?	
+	-- TODO bricks when press esc wo any other input?
 	local ok, key = pcall(vim.fn.getchar)
 	if not ok then
 		--clear hl
@@ -80,35 +80,42 @@ local function get_input_wo_prompt()
 			-- 	print ("backpace")
 			-- 	return keys.backspace
 			--s = string.sub(s,1, #s -1)
-		else 
+		else
 			return keys.cancel
 		end
 	else
 		return 0
 	end
-	--return "("..s:gsub('[%c]','') .. ")"
-	--return s:gsub('[%c]','')
 end
 
-local function find(buf_handle, needle)
+local function find_string(buf_handle, needle)
 	--return list of (row,col) of first character where needle is founqd
 	-- test string : key hello world mumbojumbo k ke key "hello world"
 	local win = window.get_visible_lines_range()
 	local buffer = get_buf(buf_handle, win.top, win.bottom)
 	local matches = {}
+	local do_smartcase = false
+
+	if opts.enable_smartcase and not string.match(needle, "%u") then --XXXX
+		do_smartcase = true
+	end
 	if opts.enable_wildcard then
-		local replace = vim.api.nvim_replace_termcodes(opts.wildcard_key,true,false,true)
-		needle = string.gsub(needle, replace, ".")
+		local replace = vim.api.nvim_replace_termcodes(opts.wildcard_key, true, false, true)
+		needle = string.gsub(needle, replace, ".*")
 	end
 
 	for i,line in ipairs(buffer) do
-		local len = #line
+		if do_smartcase then
+			line = string.lower(line)
+		end
 		local start = 0
 		local stop = 0
+
 		while stop ~= nil do
-			start, stop = string.find(line, needle, stop, false)
+			--should i return stop +1 to, like f does
+			start, stop = string.find(line, needle, stop + 1, false)
 			if start and stop then
-				table.insert(matches, {line=i, start=start - 1, stop=stop })
+				table.insert(matches, {line = i, start = start - 1, stop = stop })
 			end
 		end
 
@@ -117,15 +124,41 @@ local function find(buf_handle, needle)
 	return matches
 end
 
+local function before_or_after(cur_pos,target)
+	local dir = 0
+
+	if cur_pos.row == target.row + window.get_line_offset() then
+		-- print(vim.inspect(cur_pos))
+		-- print(vim.inspect(target))
+		if cur_pos.col > target.col then
+			dir =  -1
+		elseif cur_pos.col < target.col then
+			dir =  1
+		else
+			dir =  0
+		end
+	elseif cur_pos.row > target.row + window.get_line_offset() then
+		dir =  -1
+	elseif cur_pos.row < target.row + window.get_line_offset() then
+		dir =  1
+	end
+	return dir
+end
+
+
 local function jump(target)
-	local window = vim.api.nvim_get_current_win()
-	local win_info = vim.fn.getwininfo(window)[1]
+	--- expects target pos relative to window { row= , col= }
 	-- register current pos berfore jumping
 	-- to add it to the jumplist
 	vim.cmd("normal! m'")
+	-- check direction
+	local dir = 0
+	local cur_pos = window.get_cursor_pos()
 
-	vim.api.nvim_win_set_cursor(window, {target.row + win_info.topline - 1, target.col})
+	dir = before_or_after(cur_pos, target)
+	vim.api.nvim_win_set_cursor(window, { target.row + window.get_line_offset(), target.col } )
 	-- print(vim.inspect(target))
+	return dir
 end
 
 
@@ -137,7 +170,7 @@ local function closest_match(matches, direction, x_bias, y_bias)
 
 	-- TODO implement direction
 	if not matches then
-		return 
+		return
 	end
 	local dir = direction or 0
 	local x_b = x_bias or 10
@@ -158,15 +191,63 @@ local function closest_match(matches, direction, x_bias, y_bias)
 	return best
 end
 
+local function save_current_state(needle, direction, match_list)
+	vim.w.ctrlf_needle = needle
+	vim.w.ctrlf_dir = direction
+	vim.w.ctrlf_matches = match_list
+	vim.w.ctrlf_offset = window.get_line_offset()
+end
+
+local function ctrlf_next(reverse)
+	local reverse = reverse or false  -- reverse the direction true, false
+	local dir = vim.w.ctrlf_dir -- the direction the search was first jumped
+	local matches = vim.w.ctrlf_matches
+	local cur_pos = window.get_cursor_pos()
+
+	if vim.w.ctrlf_offset ~= window.get_line_offset() then
+		-- we should do a new search to include every line on screen
+		print("offset has changed")
+	end
+	if not dir or not matches then
+		print("no search to repeat")
+		return
+	end
+	if reverse then
+		dir = dir * -1
+	end
+
+	if dir > 0 then
+		for i, v in ipairs(matches) do 
+			local target = { row = v.line, col = v.start }
+
+			-- print(before_or_after(cur_pos, { row = v.line, col = v.start }))
+			if before_or_after(cur_pos, target ) > 0 then
+				print(cur_pos.row, target.row + window.get_line_offset())
+				jump( target )
+				break
+			end
+		end
+	elseif dir < 0 then 
+		for i = #matches, 1, -1 do
+			local target = { row = matches[i].line, col = matches[i].start }
+			if before_or_after(cur_pos, target) < 0 then
+				jump(target)
+				break
+			end
+		end
+	end
+end
 
 local function ctrlf()
-	local pos = window.get_cursor_pos()
+	--local pos = window.get_cursor_pos()
 	local buf_handle = get_buf_nr()
-	local buffer = get_buf(buf_handle, pos.row, pos.row +1)
+	--local buffer = get_buf(buf_handle, pos.row, pos.row +1)
 
 	local needle = ""
 	local special_key = false
 	local cancel = false
+	local matches = " "
+
 	while 1 do
 		--elseif key is in hints
 		special_key = false
@@ -176,17 +257,15 @@ local function ctrlf()
 		end
 
 		if type(key) == "number" then
-			if key == 9 or key == 13 then 
+			if key == 9 or key == 13 then
 				break
-			else if key == 27 then
+			elseif key == 27 then
 				cancel = true
 				break
 			end
 			--elseif key is in hints
-		end
-		key = vim.fn.nr2char(key)
+			key = vim.fn.nr2char(key)
 		elseif key:byte() == 128 then
-			print(#key)
 			special_key = true
 		end
 
@@ -195,31 +274,27 @@ local function ctrlf()
 		elseif special_key then
 			if string.sub(key,2) == "kb" then
 				needle = string.sub(needle, 1, #needle - 1)
-				print(needle)
 			else
-				--vim.api.nvim_feedkeys(key, '', true)
-				key = nil
+				vim.api.nvim_feedkeys(key, '', true) -- ???
 				break
 			end
 		end
+		if needle ~= "" then
+			matches = find_string(buf_handle, needle)
+		end
 	end
 
-
-	local matches = ""
-	if #needle > 0 then
-		print(needle)
-		matches = find(buf_handle, needle)
-	end
-	-- local matches = ""
 	if #matches > 0 and not cancel then
-		local a = closest_match(matches)
-		jump(a)
+		local closest = closest_match(matches)
+		local dir = jump(closest)
+		save_current_state(needle, dir, matches)
 	else
 		print("no matches")
 		--vim.api.nvim_input("<cr>")
 	end
 end
 return {
-	ctrlf = ctrlf
+	ctrlf = ctrlf,
+	ctrlf_next = ctrlf_next
 }
 --asd
