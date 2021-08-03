@@ -1,6 +1,6 @@
 local M = {}
 
-M.hint_chars = "jfkdhglsöa"
+M.hint_chars = "jfkdhglsrtyui"
 M.quit_keys = { "<esc>" }
 M.enable_hints = true
 M.enable_smartcase = true

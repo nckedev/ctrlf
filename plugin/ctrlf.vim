@@ -6,6 +6,7 @@ fun! CtrlF()
 endfun
 
 noremap <c-f> <cmd>call CtrlF()<cr>
+noremap s <cmd>call CtrlF()<cr>
 noremap <tab> <cmd>lua require("ctrlf").ctrlf_next()<cr>
 noremap <s-tab> <cmd>lua require("ctrlf").ctrlf_next(true)<cr>
 augroup CtrlF

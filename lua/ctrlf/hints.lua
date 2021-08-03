@@ -1,12 +1,13 @@
 local opts = require "ctrlf.defaults"
 local window = require "ctrlf.window"
+local buffer = require "ctrlf.buffer"
 local M = {}
 --XX
 --vim.api.nvim_buf_set_text(buffer, start_row, start_row, end_row, end_col, replace)
 --vim.api.nvim_buf_add_highlight(buffer,nsid,hlgrp,line,colstart,colend)
 --namespace
 
-function M.generate_unique_hints(matches)
+local function generate_unique_hints(matches)
 	-- create unique table of char or char-pairs depending on how many matches
 	-- they have to be unique from each other (pairs can have same chars ("aa" and "ab" is considered unique))
 	-- they also have to be unique from from the next char or chars right after the maching string
@@ -15,11 +16,26 @@ function M.generate_unique_hints(matches)
 	-- hints have to be updateded after every search char entered to guarantee that the hint char is different
 	-- from the next char in the buffer.
 	local hintchars = opts.hint_chars
-
+	local buf = buffer.get_buf()
+	local banned_chars = {}
+	local s = ""
+	local valid_chars = {}
+	for _, v in pairs(matches) do 
+		s = string.sub(buf[v.line], v.stop + 1, v.stop + 1)
+		banned_chars[s] = true
+		-- table.insert(banned_chars, s)
+	end
+	for  i= 1, hintchars:len(),1 do 
+		local s = string.sub(hintchars, i ,i )
+		if not banned_chars[s] then
+			table.insert(valid_chars, s)
+		end
+	end
+	return valid_chars
 end
 
 --- create namespace, returns id
-function M.create_namespace(name)
+M.create_namespace = function(name)
 	return vim.api.nvim_create_namespace(name)
 end
 
@@ -31,17 +47,18 @@ function M.create_hints(bufnr, ns_id, matches_loc, closest)
 
 	local cursor_pos = window.get_cursor_pos()
 	local offset = window.get_line_offset()
-	for _, v in pairs(matches_loc) do
-		if cursor_pos.row == v.line - 1 and cursor_pos.col == v.start then 
-		end
-
+	for i, v in ipairs(matches_loc) do
+	-- if cursor_pos.row == v.line - 1 and cursor_pos.col == v.start then 
+	-- 	end
+		s = generate_unique_hints(matches_loc)
 		if closest.row == v.line and closest.col == v.start then
 			vim.api.nvim_buf_add_highlight(bufnr, ns_id, "DiffAdd", v.line -1 + offset, v.start, v.stop)
 		else
 			vim.api.nvim_buf_add_highlight(bufnr, ns_id, "DiffText", v.line -1 + offset, v.start, v.stop)
-			vim.api.nvim_buf_set_extmark(bufnr, ns_id, v.line - 1 + offset , v.start, { virt_text = { {"X", "DiffAdd" }}; virt_text_pos = 'overlay' })
+			vim.api.nvim_buf_set_extmark(bufnr, ns_id, v.line - 1 + offset , v.start, { virt_text = { {s[i], "DiffAdd" }}; virt_text_pos = 'overlay' })
 		end
 	end
+	print (vim.inspect(s))
 end
 
 function M.clear_hints(ns_id)

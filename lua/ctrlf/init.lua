@@ -236,17 +236,13 @@ local function ctrlf()
 				break
 			end
 		end
-		--if needle ~= "" and needle ~= opts.wildcard_key then
+
 		if needle ~= "" and needle ~= vim.api.nvim_replace_termcodes(opts.wildcard_key, true, false, true) then
 			matches = find_string(buf_handle, needle)
-			--create namespace
-			--create hints 
 			hints.clear_hints(ns_id)
 			closest = closest_match(matches)
 			hints.create_hints(0, ns_id, matches, closest)
 			vim.api.nvim_command("redraw")
-			
-			--apply colors
 		end
 	end
 	--clear namespace color hints
