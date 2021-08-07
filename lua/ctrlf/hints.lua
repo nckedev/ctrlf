@@ -67,7 +67,7 @@ function M.create_hints(bufnr, ns_id, matches_loc, closest)
 			vim.api.nvim_buf_add_highlight(bufnr, ns_id, "DiffAdd", v.line -1 + offset, v.start, v.stop)
 		else
 			vim.api.nvim_buf_add_highlight(bufnr, ns_id, "DiffText", v.line -1 + offset, v.start, v.stop)
-			if #hint_chars >= #matches_loc then
+			if #hint_chars >= #matches_loc and opts.enable_hints then
 				vim.api.nvim_buf_set_extmark(bufnr, ns_id, v.line - 1 + offset , v.start, { virt_text = { {hint_chars[i], "DiffAdd" }}; virt_text_pos = 'overlay' })
 				table.insert(hint_char_with_loc,  { char=hint_chars[i], row = v.line - 1 + offset, col = v.start})
 

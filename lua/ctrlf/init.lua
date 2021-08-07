@@ -226,12 +226,13 @@ local function ctrlf()
 			--elseif key is in hints
 			key = vim.fn.nr2char(key)
 
-			local last_char = key
-			for _, v in pairs(hints_loc) do 
-				if last_char == v.char then
-					target = {row = v.row - window.get_line_offset() + 1, col = v.col }
-					hints_key_pressed = true
-					break
+			if opts.enable_hints then
+				for _, v in pairs(hints_loc) do 
+					if key == v.char then
+						target = {row = v.row - window.get_line_offset() + 1, col = v.col }
+						hints_key_pressed = true
+						break
+					end
 				end
 			end
 			if hints_key_pressed then
