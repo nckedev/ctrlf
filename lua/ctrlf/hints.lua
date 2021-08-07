@@ -19,7 +19,7 @@ local function generate_unique_hints(matches)
 	-- TODO return table with hint linked to the location
 	local hintchars = opts.hint_chars
 	local buf = buffer.get_buf()
-	local banned_chars = {}
+	local banned_chars = {} --k: character, v: bool
 	local s = ""
 	local valid_chars = {}
 	for _, v in pairs(matches) do
@@ -46,13 +46,13 @@ function M.create_hints(bufnr, ns_id, matches_loc, closest)
 	--RedrawDebugRecompose
 	--nvim_buf_add_highlight({buffer}, {ns_id}, {hl_group}, {line}, {col_start}, {col_end})
 	--
-	--TODO return hint chars and location (directly form generate_unique_hints)
 	local cursor_pos = window.get_cursor_pos()
 	local offset = window.get_line_offset()
 	local win = window.get_visible_lines_range()
 	local hint_chars = {}
+	local hint_char_with_loc = {} --  k: char v: {row, col}
 	hint_chars = generate_unique_hints(matches_loc)
-	print(#hint_chars , #matches_loc)
+	--print(#hint_chars , #matches_loc)
 
 	if opts.enable_gray_background then
 		for line = win.top, win.bottom, 1 do
@@ -69,10 +69,13 @@ function M.create_hints(bufnr, ns_id, matches_loc, closest)
 			vim.api.nvim_buf_add_highlight(bufnr, ns_id, "DiffText", v.line -1 + offset, v.start, v.stop)
 			if #hint_chars >= #matches_loc then
 				vim.api.nvim_buf_set_extmark(bufnr, ns_id, v.line - 1 + offset , v.start, { virt_text = { {hint_chars[i], "DiffAdd" }}; virt_text_pos = 'overlay' })
+				table.insert(hint_char_with_loc,  { char=hint_chars[i], row = v.line - 1 + offset, col = v.start})
+
 			end
 		end
 	end
-	print (vim.inspect(hint_chars))
+	-- print (vim.inspect(hint_char_with_loc))
+	return hint_char_with_loc
 end
 
 function M.clear_hints(ns_id)

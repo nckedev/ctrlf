@@ -81,7 +81,6 @@ end
 --neeeee
 local function before_or_after(cur_pos,target)
 	local dir = 0
-
 	if cur_pos.row == target.row + window.get_line_offset() then
 		-- print(vim.inspect(cur_pos))
 		-- print(vim.inspect(target))
@@ -205,6 +204,9 @@ local function ctrlf()
 	local matches = " "
 	local ns_id = hints.create_namespace("cfns")
 	local closest = {}
+	local target = {}
+	local hints_loc = {}
+	local hints_key_pressed = false
 
 	while 1 do
 		--elseif key is in hints
@@ -223,11 +225,24 @@ local function ctrlf()
 			end
 			--elseif key is in hints
 			key = vim.fn.nr2char(key)
+
+			local last_char = key
+			for _, v in pairs(hints_loc) do 
+				if last_char == v.char then
+					target = {row = v.row - window.get_line_offset() + 1, col = v.col }
+					hints_key_pressed = true
+					break
+				end
+			end
+			if hints_key_pressed then
+				break
+			end
+
 		elseif key:byte() == 128 then
 			special_key = true
 		end
 
-		if not special_key and key then
+		if not special_key and key and not hints_key_pressed then
 			needle = needle .. key
 		elseif special_key then
 			if string.sub(key,2) == "kb" then
@@ -239,24 +254,25 @@ local function ctrlf()
 		end
 
 		if needle ~= "" and needle ~= vim.api.nvim_replace_termcodes(opts.wildcard_key, true, false, true) then
-			matches = find_string(buf_handle, needle)
 			hints.clear_hints(ns_id)
-			closest = closest_match(matches)
-			if matches == nil then
-				print("matches")
-			elseif closest == nil then
-				print("matches")
-			end
-			hints.create_hints(0, ns_id, matches, closest)
+			matches = find_string(buf_handle, needle)
+			target = closest_match(matches)
+			hints_loc = hints.create_hints(0, ns_id, matches, target)
 			vim.api.nvim_command("redraw")
+
+			---check if last input was a hint char
+			-- TODO need to remove the last char if it is a hint char
+			-- otherwise it will interfere with the search
+			-- but when can we do that?
 		end
-	end
+	end --end of while 1
+
 	--clear namespace color hints
 	hints.clear_hints(ns_id)
 
 	if #matches > 0 and not cancel then
-		closest = closest_match(matches)
-		local dir = jump(closest)
+		--closest = closest_match(matches)
+		local dir = jump(target)
 		save_current_state(needle, dir, matches, true)
 	else
 		print("no matches")
