@@ -10,7 +10,7 @@ M.jump_next_keys = { "<tab>" }
 M.wildcard_key = "<space>"
 M.search_direction = "both" --forward, backwards, both
 M.enable_gray_background = true
-M.wildcard_magic_string = ".?"
+M.wildcard_magic_string = ".?" --lua magic regex + * ? -
 M.enable_jumplist = true
 
 

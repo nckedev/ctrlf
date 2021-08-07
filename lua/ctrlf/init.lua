@@ -12,7 +12,9 @@
 -- DONE space as wildcard maybe?
 --
 -- DONE fix tab confirm (tab to move to next match, s-tab for prev in buffer)
---
+-- 
+-- maybe find_string should return next char, for easier acces when generating hints.
+--t
 -- move to match_pos - 1 (ctrl-t maybe?) good when using with d,y etc
 --
 local window = require "ctrlf.window"
@@ -51,7 +53,6 @@ local function find_string(buf_handle, needle)
 	local do_smartcase = false
 
 	if opts.enable_smartcase and not string.match(needle, "%u") then --XXXX
-		
 		do_smartcase = true
 	end
 	if opts.enable_wildcard then
@@ -75,7 +76,6 @@ local function find_string(buf_handle, needle)
 		end
 
 	end
-	--print(vim.inspect(matches))
 	return matches
 end
 --neeeee
@@ -97,6 +97,7 @@ local function before_or_after(cur_pos,target)
 	elseif cur_pos.row < target.row + window.get_line_offset() then
 		dir =  1
 	end
+
 	return dir
 end
 
@@ -241,6 +242,11 @@ local function ctrlf()
 			matches = find_string(buf_handle, needle)
 			hints.clear_hints(ns_id)
 			closest = closest_match(matches)
+			if matches == nil then
+				print("matches")
+			elseif closest == nil then
+				print("matches")
+			end
 			hints.create_hints(0, ns_id, matches, closest)
 			vim.api.nvim_command("redraw")
 		end

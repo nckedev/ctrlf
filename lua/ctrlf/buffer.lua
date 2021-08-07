@@ -1,3 +1,4 @@
+
 local window = require "ctrlf.window"
 
 local M = {}
