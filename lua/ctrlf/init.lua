@@ -5,18 +5,20 @@
 --  -no match: gray
 --
 -- bias search direction (default x bias atm)
--- crash when starting serach with a wildcard.
 --
--- DONE smartcase (if search input contains UPPER chars then casesensitive otherwise not
---
--- DONE space as wildcard maybe?
---
--- DONE fix tab confirm (tab to move to next match, s-tab for prev in buffer)
--- 
 -- maybe find_string should return next char, for easier acces when generating hints.
---t
+--
 -- move to match_pos - 1 (ctrl-t maybe?) good when using with d,y etc
 --
+-- make a hint for the last char of the word so you can jump to start or end of target
+--
+-- standardize when using with offset or not
+-- 		maybe a class for Coord, with row, col/start, end, local or window offset
+--
+-- set config table from vimrc
+--
+-- hint and jump to all open windows
+
 local window = require "ctrlf.window"
 local opts = require "ctrlf.defaults"
 local hints = require "ctrlf.hints"
@@ -24,7 +26,6 @@ local buffer = require "ctrlf.buffer"
 
 local KEYS = { confirm = "confirm", backspace = "backspace", cancel = "cancel" }
 local DIR = { forward = 1, none = 0, backwards = -1 }
-
 
 local function get_input(prompt)
 	prompt = prompt or "> "
@@ -46,13 +47,12 @@ end
 
 local function find_string(buf_handle, needle)
 	--return list of (row,col) of first character where needle is founqd
-	-- test string : key hello world mumbojumbo k ke key "hello world"
-	local win = window.get_visible_lines_range()
-	local buffer = buffer.get_buf(buf_handle, win.top, win.bottom)
+
+	local buf = buffer.get_buf(buf_handle)
 	local matches = {}
 	local do_smartcase = false
 
-	if opts.enable_smartcase and not string.match(needle, "%u") then --XXXX
+	if opts.enable_smartcase and not string.match(needle, "%u") then
 		do_smartcase = true
 	end
 	if opts.enable_wildcard then
@@ -60,7 +60,7 @@ local function find_string(buf_handle, needle)
 		needle = string.gsub(needle, replace, opts.wildcard_magic_string)
 	end
 
-	for i,line in ipairs(buffer) do
+	for i,line in ipairs(buf) do
 		if do_smartcase then
 			line = string.lower(line)
 		end
@@ -78,8 +78,10 @@ local function find_string(buf_handle, needle)
 	end
 	return matches
 end
---neeeee
-local function before_or_after(cur_pos,target)
+
+---@params cur_pos
+--@params target
+local function before_or_after(cur_pos, target)
 	local dir = 0
 	if cur_pos.row == target.row + window.get_line_offset() then
 		-- print(vim.inspect(cur_pos))
@@ -203,7 +205,6 @@ local function ctrlf()
 	local cancel = false
 	local matches = " "
 	local ns_id = hints.create_namespace("cfns")
-	local closest = {}
 	local target = {}
 	local hints_loc = {}
 	local hints_key_pressed = false
@@ -226,12 +227,13 @@ local function ctrlf()
 			--elseif key is in hints
 			key = vim.fn.nr2char(key)
 
-			local last_char = key
-			for _, v in pairs(hints_loc) do 
-				if last_char == v.char then
-					target = {row = v.row - window.get_line_offset() + 1, col = v.col }
-					hints_key_pressed = true
-					break
+			if opts.enable_hints then
+				for _, v in pairs(hints_loc) do
+					if key == v.char then
+						target = {row = v.row - window.get_line_offset() + 1, col = v.col }
+						hints_key_pressed = true
+						break
+					end
 				end
 			end
 			if hints_key_pressed then
@@ -244,6 +246,7 @@ local function ctrlf()
 
 		if not special_key and key and not hints_key_pressed then
 			needle = needle .. key
+			print(needle)
 		elseif special_key then
 			if string.sub(key,2) == "kb" then
 				needle = string.sub(needle, 1, #needle - 1)

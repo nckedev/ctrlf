@@ -59,16 +59,20 @@ function M.create_hints(bufnr, ns_id, matches_loc, closest)
 			vim.api.nvim_buf_add_highlight(bufnr, ns_id, "Comment",line, 0 , -1)
 		end
 	end
+	
+	local hl_closest_match = "DiffAdd"
+	local hl_other_match = "DiffText"
+	local hl_hint_char = "DiffChange"
 
 	for i, v in ipairs(matches_loc) do
 	-- if cursor_pos.row == v.line - 1 and cursor_pos.col == v.start then
 	-- 	end
 		if closest.row == v.line and closest.col == v.start then
-			vim.api.nvim_buf_add_highlight(bufnr, ns_id, "DiffAdd", v.line -1 + offset, v.start, v.stop)
+			vim.api.nvim_buf_add_highlight(bufnr, ns_id, hl_closest_match, v.line -1 + offset, v.start, v.stop)
 		else
-			vim.api.nvim_buf_add_highlight(bufnr, ns_id, "DiffText", v.line -1 + offset, v.start, v.stop)
-			if #hint_chars >= #matches_loc then
-				vim.api.nvim_buf_set_extmark(bufnr, ns_id, v.line - 1 + offset , v.start, { virt_text = { {hint_chars[i], "DiffAdd" }}; virt_text_pos = 'overlay' })
+			vim.api.nvim_buf_add_highlight(bufnr, ns_id, hl_other_match, v.line -1 + offset, v.start, v.stop)
+			if #hint_chars >= #matches_loc and opts.enable_hints then
+				vim.api.nvim_buf_set_extmark(bufnr, ns_id, v.line - 1 + offset , v.start, { virt_text = { {hint_chars[i], hl_hint_char }}; virt_text_pos = 'overlay' })
 				table.insert(hint_char_with_loc,  { char=hint_chars[i], row = v.line - 1 + offset, col = v.start})
 
 			end
