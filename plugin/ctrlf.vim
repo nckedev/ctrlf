@@ -15,7 +15,7 @@
 "
 
 command! Ctrlf lua require'ctrlf'.ctrlf()
-command! Ctrlf_next lua require'ctrlf'.ctrlf_next()
-command! Ctrlf_prev lua require'ctrlf'.ctrlf_next(true)
+command! CtrlfNext lua require'ctrlf'.ctrlf_next()
+command! CtrlfPrev lua require'ctrlf'.ctrlf_next(true)
 
 
