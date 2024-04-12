@@ -19,10 +19,10 @@
 --
 -- hint and jump to all open windows
 
-local window = require "ctrlf.window"
-local opts = require "ctrlf.defaults"
-local hints = require "ctrlf.hints"
-local buffer = require "ctrlf.buffer"
+local window = require("ctrlf.window")
+local opts = require("ctrlf.defaults")
+local hints = require("ctrlf.hints")
+local buffer = require("ctrlf.buffer")
 
 local KEYS = { confirm = "confirm", backspace = "backspace", cancel = "cancel" }
 local DIR = { forward = 1, none = 0, backwards = -1 }
@@ -60,7 +60,7 @@ local function find_string(buf_handle, needle)
 		needle = string.gsub(needle, replace, opts.wildcard_magic_string)
 	end
 
-	for i,line in ipairs(buf) do
+	for i, line in ipairs(buf) do
 		if do_smartcase then
 			line = string.lower(line)
 		end
@@ -71,10 +71,9 @@ local function find_string(buf_handle, needle)
 			--should i return stop +1 to, like f does
 			start, stop = string.find(line, needle, stop + 1, false)
 			if start and stop then
-				table.insert(matches, {line = i, start = start - 1, stop = stop })
+				table.insert(matches, { line = i, start = start - 1, stop = stop })
 			end
 		end
-
 	end
 	return matches
 end
@@ -87,21 +86,20 @@ local function before_or_after(cur_pos, target)
 		-- print(vim.inspect(cur_pos))
 		-- print(vim.inspect(target))
 		if cur_pos.col > target.col then
-			dir =  -1
+			dir = -1
 		elseif cur_pos.col < target.col then
-			dir =  1
+			dir = 1
 		else
-			dir =  0
+			dir = 0
 		end
 	elseif cur_pos.row > target.row + window.get_line_offset() then
-		dir =  -1
+		dir = -1
 	elseif cur_pos.row < target.row + window.get_line_offset() then
-		dir =  1
+		dir = 1
 	end
 
 	return dir
 end
-
 
 local function jump(target)
 	--- expects target pos relative to window { row= , col= }
@@ -115,11 +113,10 @@ local function jump(target)
 	local cur_pos = window.get_cursor_pos()
 
 	dir = before_or_after(cur_pos, target)
-	vim.api.nvim_win_set_cursor(window, { target.row + window.get_line_offset(), target.col } )
+	vim.api.nvim_win_set_cursor(vim.api.nvim_get_current_win(), { target.row + window.get_line_offset(), target.col })
 	-- print(vim.inspect(target))
 	return dir
 end
-
 
 local function closest_match(matches, direction, x_bias, y_bias)
 	--returnd (row, col) of the closest (manhattan distance)  match
@@ -139,8 +136,9 @@ local function closest_match(matches, direction, x_bias, y_bias)
 
 	-- print("matches: " .. #matches)
 
-	for _,v in pairs(matches) do
-		local candidate = x_b * math.abs(pos.row - (v.line + window.get_line_offset())) + y_b * math.abs(pos.col - v.start)
+	for _, v in pairs(matches) do
+		local candidate = x_b * math.abs(pos.row - (v.line + window.get_line_offset()))
+			+ y_b * math.abs(pos.col - v.start)
 		if candidate < min then
 			min = candidate
 			best = { row = v.line, col = v.start }
@@ -158,7 +156,7 @@ local function save_current_state(needle, direction, match_list, active)
 end
 
 local function ctrlf_next(reverse)
-	local reverse = reverse or false  -- reverse the direction true, false
+	local reverse = reverse or false -- reverse the direction true, false
 	local dir = vim.w.ctrlf_dir -- the direction the search was first jumped
 	local matches = vim.w.ctrlf_matches
 	local cur_pos = window.get_cursor_pos()
@@ -179,8 +177,8 @@ local function ctrlf_next(reverse)
 	if dir == DIR.forward then
 		for i, v in ipairs(matches) do
 			local target = { row = v.line, col = v.start }
-			if before_or_after(cur_pos, target ) > 0 then
-				jump( target )
+			if before_or_after(cur_pos, target) > 0 then
+				jump(target)
 				break
 			end
 		end
@@ -230,7 +228,7 @@ local function ctrlf()
 			if opts.enable_hints then
 				for _, v in pairs(hints_loc) do
 					if key == v.char then
-						target = {row = v.row - window.get_line_offset() + 1, col = v.col }
+						target = { row = v.row - window.get_line_offset() + 1, col = v.col }
 						hints_key_pressed = true
 						break
 					end
@@ -239,7 +237,6 @@ local function ctrlf()
 			if hints_key_pressed then
 				break
 			end
-
 		elseif key:byte() == 128 then
 			special_key = true
 		end
@@ -248,10 +245,10 @@ local function ctrlf()
 			needle = needle .. key
 			print(needle)
 		elseif special_key then
-			if string.sub(key,2) == "kb" then
+			if string.sub(key, 2) == "kb" then
 				needle = string.sub(needle, 1, #needle - 1)
 			else
-				vim.api.nvim_feedkeys(key, '', true) -- ???
+				vim.api.nvim_feedkeys(key, "", true) -- ???
 				break
 			end
 		end
@@ -284,6 +281,6 @@ local function ctrlf()
 end
 return {
 	ctrlf = ctrlf,
-	ctrlf_next = ctrlf_next
+	ctrlf_next = ctrlf_next,
 }
 --asd
