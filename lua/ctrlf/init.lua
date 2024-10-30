@@ -79,7 +79,7 @@ local function find_string(buf_handle, needle)
 end
 
 ---@params cur_pos
---@params target
+---@params target
 local function before_or_after(cur_pos, target)
 	local dir = 0
 	if cur_pos.row == target.row + window.get_line_offset() then
@@ -132,7 +132,7 @@ local function closest_match(matches, direction, x_bias, y_bias)
 	local y_b = y_bias or 1
 	local pos = window.get_cursor_pos()
 	local min = 99999999
-	local best = 0
+	local best = {}
 
 	-- print("matches: " .. #matches)
 
@@ -156,7 +156,7 @@ local function save_current_state(needle, direction, match_list, active)
 end
 
 local function ctrlf_next(reverse)
-	local reverse = reverse or false -- reverse the direction true, false
+	reverse = reverse or false -- reverse the direction true, false
 	local dir = vim.w.ctrlf_dir -- the direction the search was first jumped
 	local matches = vim.w.ctrlf_matches
 	local cur_pos = window.get_cursor_pos()
@@ -175,7 +175,7 @@ local function ctrlf_next(reverse)
 	end
 
 	if dir == DIR.forward then
-		for i, v in ipairs(matches) do
+		for _, v in ipairs(matches) do
 			local target = { row = v.line, col = v.start }
 			if before_or_after(cur_pos, target) > 0 then
 				jump(target)
@@ -201,7 +201,7 @@ local function ctrlf()
 	local needle = ""
 	local special_key = false
 	local cancel = false
-	local matches = " "
+	local matches = {}
 	local ns_id = hints.create_namespace("cfns")
 	local target = {}
 	local hints_loc = {}
@@ -247,6 +247,7 @@ local function ctrlf()
 		elseif special_key then
 			if string.sub(key, 2) == "kb" then
 				needle = string.sub(needle, 1, #needle - 1)
+				print(needle)
 			else
 				vim.api.nvim_feedkeys(key, "", true) -- ???
 				break
