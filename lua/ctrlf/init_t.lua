@@ -1,3 +1,8 @@
+--
+-- command! Ctrlf lua require'ctrlf'.ctrlf()
+-- command! CtrlfNext lua require'ctrlf'.ctrlf_next()
+-- command! CtrlfPrev lua require'ctrlf'.ctrlf_next(true)
+--
 -- Features
 -- highlighting
 --  -closest: green
@@ -19,12 +24,15 @@
 --
 -- hint and jump to all open windows
 
+print("init")
+
 local window = require("ctrlf.window")
-local opts = require("ctrlf.defaults")
+-- local opts = require("ctrlf.defaults")
 local hints = require("ctrlf.hints")
 local buffer = require("ctrlf.buffer")
 
-local KEYS = { confirm = "confirm", backspace = "backspace", cancel = "cancel" }
+
+--- @enum
 local DIR = { forward = 1, none = 0, backwards = -1 }
 
 local function get_input(prompt)
@@ -47,8 +55,9 @@ end
 
 ---@param buf_handle integer
 ---@param needle string
+---@param opts table
 ---@return table
-local function find_string(buf_handle, needle)
+local function find_string(buf_handle, needle, opts)
 	--return list of (row,col) of first character where needle is founqd
 
 	local buf = buffer.get_buf(buf_handle)
@@ -84,9 +93,13 @@ local function find_string(buf_handle, needle)
 	return matches
 end
 
+---determens if the target is befor or after the cursors current position
+----1 = before
+---0 = same pos
+---1 = after
 ---@param cur_pos table
 ---@param target table
----@return integer
+---@return -1 | 0 | 1
 local function before_or_after(cur_pos, target)
 	local dir = 0
 	if cur_pos.row == target.row + window.get_line_offset() then
@@ -110,8 +123,9 @@ end
 
 ---jumps to a target and returns the direction of the jump
 ---@param target table
+---@param opts table
 ---@return integer dir the direction
-local function jump(target)
+local function jump(target, opts)
 	--- expects target pos relative to window { row= , col= }
 	-- register current pos berfore jumping
 	-- to add it to the jumplist
@@ -173,7 +187,8 @@ end
 
 ---Goto the next match
 ---@param reverse boolean | nil  #reverse order, defaults to false
-local function ctrlf_next(reverse)
+---@param opts table #configuration
+local function ctrlf_next(reverse, opts)
 	reverse = reverse or false -- reverse the direction true, false
 	local dir = vim.w.ctrlf_dir -- the direction the search was first jumped
 	local matches = vim.w.ctrlf_matches
@@ -196,7 +211,7 @@ local function ctrlf_next(reverse)
 		for _, v in ipairs(matches) do
 			local target = { row = v.line, col = v.start }
 			if before_or_after(cur_pos, target) > 0 then
-				jump(target)
+				jump(target, opts)
 				break
 			end
 		end
@@ -204,14 +219,19 @@ local function ctrlf_next(reverse)
 		for i = #matches, 1, -1 do
 			local target = { row = matches[i].line, col = matches[i].start }
 			if before_or_after(cur_pos, target) < 0 then
-				jump(target)
+				jump(target, opts)
 				break
 			end
 		end
 	end
 end
 
-local function ctrlf()
+--- makes a search
+---@param opts table
+local function ctrlf(opts)
+	if not opts.enabled then
+		return
+	end
 	--local pos = window.get_cursor_pos()
 	local buf_handle = buffer.get_buf_nr()
 	--local buffer = get_buf(buf_handle, pos.row, pos.row +1)
@@ -257,7 +277,6 @@ local function ctrlf()
 				break
 			end
 		elseif key:byte() == 128 then
-			print(key)
 			special_key = true
 		end
 
@@ -276,9 +295,9 @@ local function ctrlf()
 
 		if needle ~= "" and needle ~= vim.api.nvim_replace_termcodes(opts.wildcard_key, true, false, true) then
 			hints.clear_hints(ns_id)
-			matches = find_string(buf_handle, needle)
-			target = closest_match(matches, 0, 10, 1)
-			hints_loc = hints.create_hints(0, ns_id, matches, target)
+			matches = find_string(buf_handle, needle, opts)
+			target = closest_match(matches, 0, 10, 1) or {}
+			hints_loc = hints.create_hints(0, ns_id, matches, target, opts)
 			vim.api.nvim_command("redraw")
 
 			---check if last input was a hint char
@@ -293,15 +312,21 @@ local function ctrlf()
 
 	if #matches > 0 and not cancel then
 		--closest = closest_match(matches)
-		local dir = jump(target or {})
+		local dir = jump(target or {}, opts)
 		save_current_state(needle, dir, matches, true)
 	else
 		print("no matches")
 		--vim.api.nvim_input("<cr>")
 	end
 end
-return {
-	ctrlf = ctrlf,
-	ctrlf_next = ctrlf_next,
-}
---asd
+
+local M = {}
+M.ctrlf = function(opts)
+	ctrlf(opts)
+end
+
+M.ctrlf_next = function(reverse, opts)
+	ctrlf_next(reverse, opts)
+end
+
+return M

@@ -1,4 +1,4 @@
-local opts = require "ctrlf.defaults"
+-- local opts = require "ctrlf.defaults"
 local window = require "ctrlf.window"
 local buffer = require "ctrlf.buffer"
 local M = {}
@@ -8,8 +8,9 @@ local M = {}
 --namespace
 
 ---@param matches table #
+---@param opts table
 ---@return table # viable hint characters
-local function generate_unique_hints(matches)
+local function generate_unique_hints(matches, opts)
 	-- create unique table of char or char-pairs depending on how many matches
 	-- they have to be unique from each other (pairs can have same chars ("aa" and "ab" is considered unique))
 	-- they also have to be unique from from the next char or chars right after the maching string
@@ -42,7 +43,14 @@ end
 M.create_namespace = function(name)
 	return vim.api.nvim_create_namespace(name)
 end
-function M.create_hints(bufnr, ns_id, matches_loc, closest)
+---comment
+---@param bufnr integer
+---@param ns_id integer
+---@param matches_loc table |nil
+---@param closest {row: integer, col : integer}
+---@param opts table
+---@return table
+function M.create_hints(bufnr, ns_id, matches_loc, closest, opts)
 	--vim.api.nvim_buf_set_extmark(0, hl_ns, hint.line, hint.col - 1, { virt_text = { { hint.hint, "HopNextKey" } }; virt_text_pos = 'overlay' })
 	--nvim_buf_set_extmark({buffer}, {ns_id}, {line}, {col}, {opts})
 	--RedrawDebugRecompose
@@ -53,7 +61,7 @@ function M.create_hints(bufnr, ns_id, matches_loc, closest)
 	local win = window.get_visible_lines_range()
 	local hint_chars = {}
 	local hint_char_with_loc = {} --  k: char v: {row, col}
-	hint_chars = generate_unique_hints(matches_loc)
+	hint_chars = generate_unique_hints(matches_loc or {}, opts)
 	--print(#hint_chars , #matches_loc)
 
 	if opts.enable_gray_background then
@@ -66,7 +74,7 @@ function M.create_hints(bufnr, ns_id, matches_loc, closest)
 	local hl_other_match = "DiffText"
 	local hl_hint_char = "DiffChange"
 
-	for i, v in ipairs(matches_loc) do
+	for i, v in ipairs(matches_loc or {}) do
 		-- if cursor_pos.row == v.line - 1 and cursor_pos.col == v.start then
 		-- 	end
 		if closest.row == v.line and closest.col == v.start then

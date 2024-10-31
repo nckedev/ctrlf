@@ -19,6 +19,7 @@ local M = {}
 --- @param args table
 M.setup = function(args)
 	print("setup")
+	print(vim.inspect(args))
 	M.config = vim.tbl_deep_extend("force", config, args or {})
 end
 
