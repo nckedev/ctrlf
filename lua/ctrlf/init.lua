@@ -110,7 +110,7 @@ end
 
 ---jumps to a target and returns the direction of the jump
 ---@param target table
----@return integer
+---@return integer dir the direction
 local function jump(target)
 	--- expects target pos relative to window { row= , col= }
 	-- register current pos berfore jumping
@@ -128,11 +128,12 @@ local function jump(target)
 	return dir
 end
 
+
 ---@param matches table
 ---@param direction integer
 ---@param x_bias integer
 ---@param y_bias integer
----@return table | nil
+---@return {row: integer, col : integer} | nil
 local function closest_match(matches, direction, x_bias, y_bias)
 	--returnd (row, col) of the closest (manhattan distance)  match
 	--prioritize same line?
@@ -170,6 +171,8 @@ local function save_current_state(needle, direction, match_list, active)
 	vim.w.ctrlf_active = active or false
 end
 
+---Goto the next match
+---@param reverse boolean | nil  #reverse order, defaults to false
 local function ctrlf_next(reverse)
 	reverse = reverse or false -- reverse the direction true, false
 	local dir = vim.w.ctrlf_dir -- the direction the search was first jumped
@@ -218,6 +221,7 @@ local function ctrlf()
 	local cancel = false
 	local matches = {}
 	local ns_id = hints.create_namespace("cfns")
+	---@type table | nil
 	local target = {}
 	local hints_loc = {}
 	local hints_key_pressed = false
@@ -253,6 +257,7 @@ local function ctrlf()
 				break
 			end
 		elseif key:byte() == 128 then
+			print(key)
 			special_key = true
 		end
 
@@ -272,7 +277,6 @@ local function ctrlf()
 		if needle ~= "" and needle ~= vim.api.nvim_replace_termcodes(opts.wildcard_key, true, false, true) then
 			hints.clear_hints(ns_id)
 			matches = find_string(buf_handle, needle)
-			print(#matches)
 			target = closest_match(matches, 0, 10, 1)
 			hints_loc = hints.create_hints(0, ns_id, matches, target)
 			vim.api.nvim_command("redraw")
@@ -289,7 +293,7 @@ local function ctrlf()
 
 	if #matches > 0 and not cancel then
 		--closest = closest_match(matches)
-		local dir = jump(target)
+		local dir = jump(target or {})
 		save_current_state(needle, dir, matches, true)
 	else
 		print("no matches")
