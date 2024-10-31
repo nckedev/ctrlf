@@ -45,6 +45,9 @@ local function get_input_wo_prompt()
 	-- if hits pressed then jump
 end
 
+---@param buf_handle integer
+---@param needle string
+---@return table
 local function find_string(buf_handle, needle)
 	--return list of (row,col) of first character where needle is founqd
 
@@ -64,7 +67,10 @@ local function find_string(buf_handle, needle)
 		if do_smartcase then
 			line = string.lower(line)
 		end
+
+		---@type integer | nil
 		local start = 0
+		---@type integer | nil
 		local stop = 0
 
 		while stop ~= nil do
@@ -78,8 +84,9 @@ local function find_string(buf_handle, needle)
 	return matches
 end
 
----@params cur_pos
----@params target
+---@param cur_pos table
+---@param target table
+---@return integer
 local function before_or_after(cur_pos, target)
 	local dir = 0
 	if cur_pos.row == target.row + window.get_line_offset() then
@@ -101,6 +108,9 @@ local function before_or_after(cur_pos, target)
 	return dir
 end
 
+---jumps to a target and returns the direction of the jump
+---@param target table
+---@return integer
 local function jump(target)
 	--- expects target pos relative to window { row= , col= }
 	-- register current pos berfore jumping
@@ -118,6 +128,11 @@ local function jump(target)
 	return dir
 end
 
+---@param matches table
+---@param direction integer
+---@param x_bias integer
+---@param y_bias integer
+---@return table | nil
 local function closest_match(matches, direction, x_bias, y_bias)
 	--returnd (row, col) of the closest (manhattan distance)  match
 	--prioritize same line?
@@ -257,7 +272,8 @@ local function ctrlf()
 		if needle ~= "" and needle ~= vim.api.nvim_replace_termcodes(opts.wildcard_key, true, false, true) then
 			hints.clear_hints(ns_id)
 			matches = find_string(buf_handle, needle)
-			target = closest_match(matches)
+			print(#matches)
+			target = closest_match(matches, 0, 10, 1)
 			hints_loc = hints.create_hints(0, ns_id, matches, target)
 			vim.api.nvim_command("redraw")
 

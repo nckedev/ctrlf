@@ -7,6 +7,8 @@ local M = {}
 --vim.api.nvim_buf_add_highlight(buffer,nsid,hlgrp,line,colstart,colend)
 --namespace
 
+---@param matches table #
+---@return table # viable hint characters
 local function generate_unique_hints(matches)
 	-- create unique table of char or char-pairs depending on how many matches
 	-- they have to be unique from each other (pairs can have same chars ("aa" and "ab" is considered unique))
@@ -27,8 +29,8 @@ local function generate_unique_hints(matches)
 		banned_chars[s] = true
 		-- table.insert(banned_chars, s)
 	end
-	for  i= 1, hintchars:len(),1 do
-		local s = string.sub(hintchars, i ,i )
+	for i = 1, hintchars:len(), 1 do
+		local s = string.sub(hintchars, i, i)
 		if not banned_chars[s] then
 			table.insert(valid_chars, s)
 		end
@@ -56,25 +58,25 @@ function M.create_hints(bufnr, ns_id, matches_loc, closest)
 
 	if opts.enable_gray_background then
 		for line = win.top, win.bottom, 1 do
-			vim.api.nvim_buf_add_highlight(bufnr, ns_id, "Comment",line, 0 , -1)
+			vim.api.nvim_buf_add_highlight(bufnr, ns_id, "Comment", line, 0, -1)
 		end
 	end
-	
+
 	local hl_closest_match = "DiffAdd"
 	local hl_other_match = "DiffText"
 	local hl_hint_char = "DiffChange"
 
 	for i, v in ipairs(matches_loc) do
-	-- if cursor_pos.row == v.line - 1 and cursor_pos.col == v.start then
-	-- 	end
+		-- if cursor_pos.row == v.line - 1 and cursor_pos.col == v.start then
+		-- 	end
 		if closest.row == v.line and closest.col == v.start then
-			vim.api.nvim_buf_add_highlight(bufnr, ns_id, hl_closest_match, v.line -1 + offset, v.start, v.stop)
+			vim.api.nvim_buf_add_highlight(bufnr, ns_id, hl_closest_match, v.line - 1 + offset, v.start, v.stop)
 		else
-			vim.api.nvim_buf_add_highlight(bufnr, ns_id, hl_other_match, v.line -1 + offset, v.start, v.stop)
+			vim.api.nvim_buf_add_highlight(bufnr, ns_id, hl_other_match, v.line - 1 + offset, v.start, v.stop)
 			if #hint_chars >= #matches_loc and opts.enable_hints then
-				vim.api.nvim_buf_set_extmark(bufnr, ns_id, v.line - 1 + offset , v.start, { virt_text = { {hint_chars[i], hl_hint_char }}; virt_text_pos = 'overlay' })
-				table.insert(hint_char_with_loc,  { char=hint_chars[i], row = v.line - 1 + offset, col = v.start})
-
+				vim.api.nvim_buf_set_extmark(bufnr, ns_id, v.line - 1 + offset, v.start,
+					{ virt_text = { { hint_chars[i], hl_hint_char } }, virt_text_pos = 'overlay' })
+				table.insert(hint_char_with_loc, { char = hint_chars[i], row = v.line - 1 + offset, col = v.start })
 			end
 		end
 	end
@@ -83,8 +85,8 @@ function M.create_hints(bufnr, ns_id, matches_loc, closest)
 end
 
 function M.clear_hints(ns_id)
-	vim.api.nvim_buf_clear_namespace(0, ns_id,0,-1)
+	vim.api.nvim_buf_clear_namespace(0, ns_id, 0, -1)
 	--vim.api.nvim_buf_clear_highlight()
 end
-return M
 
+return M
