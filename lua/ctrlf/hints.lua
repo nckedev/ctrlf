@@ -7,9 +7,9 @@ local M = {}
 --vim.api.nvim_buf_add_highlight(buffer,nsid,hlgrp,line,colstart,colend)
 --namespace
 
----@param matches table #
----@param opts table
----@return table # viable hint characters
+---@param matches Span[]
+---@param opts Options
+---@return string[] # viable hint characters
 local function generate_unique_hints(matches, opts)
 	-- create unique table of char or char-pairs depending on how many matches
 	-- they have to be unique from each other (pairs can have same chars ("aa" and "ab" is considered unique))
@@ -22,8 +22,10 @@ local function generate_unique_hints(matches, opts)
 	-- TODO return table with hint linked to the location
 	local hintchars = opts.hint_chars
 	local buf = buffer.get_buf()
-	local banned_chars = {} --k: character, v: bool
+	---@type table<string, boolean>
+	local banned_chars = {}
 	local s = ""
+	---@type string[]
 	local valid_chars = {}
 	for _, v in pairs(matches) do
 		s = string.sub(buf[v.line], v.stop + 1, v.stop + 1)
@@ -46,10 +48,10 @@ end
 ---comment
 ---@param bufnr integer
 ---@param ns_id integer
----@param matches_loc table |nil
+---@param matches_loc {line : integer, start: integer, stop: integer} | nil
 ---@param closest {row: integer, col : integer}
----@param opts table
----@return table
+---@param opts Options
+---@return HintChar
 function M.create_hints(bufnr, ns_id, matches_loc, closest, opts)
 	--vim.api.nvim_buf_set_extmark(0, hl_ns, hint.line, hint.col - 1, { virt_text = { { hint.hint, "HopNextKey" } }; virt_text_pos = 'overlay' })
 	--nvim_buf_set_extmark({buffer}, {ns_id}, {line}, {col}, {opts})

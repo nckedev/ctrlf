@@ -1,0 +1,20 @@
+---@alias Pos {row: integer, col: integer}
+---
+---@class Options
+---@field enabled boolean
+---@field hint_chars string
+---@field quit_keys string[]
+---@field enable_hints boolean
+---@field enable_smartcase boolean
+---@field enable_wildcard boolean
+---@field jump_keys_closest string[]
+---@field jump_keys_next string[]
+---@field wildcard_key string
+---@field search_direction "forward" | "backward" | "both"
+---@field enable_gray_background boolean
+---@field wildcard_magic_string  string
+---@field enable_jumplist boolean
+---
+---@alias HintChar {char: string, row: integer, col: integer}
+---@alias Span {line: integer, start: integer, stop: integer }
+---@alias Dir -1 | 0 | 1

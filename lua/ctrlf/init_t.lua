@@ -1,8 +1,3 @@
---
--- command! Ctrlf lua require'ctrlf'.ctrlf()
--- command! CtrlfNext lua require'ctrlf'.ctrlf_next()
--- command! CtrlfPrev lua require'ctrlf'.ctrlf_next(true)
---
 -- Features
 -- highlighting
 --  -closest: green
@@ -24,10 +19,8 @@
 --
 -- hint and jump to all open windows
 
-print("init")
 
 local window = require("ctrlf.window")
--- local opts = require("ctrlf.defaults")
 local hints = require("ctrlf.hints")
 local buffer = require("ctrlf.buffer")
 
@@ -55,12 +48,13 @@ end
 
 ---@param buf_handle integer
 ---@param needle string
----@param opts table
----@return table
+---@param opts Options
+---@return Span[]
 local function find_string(buf_handle, needle, opts)
 	--return list of (row,col) of first character where needle is founqd
 
 	local buf = buffer.get_buf(buf_handle)
+	---@type Span[]
 	local matches = {}
 	local do_smartcase = false
 
@@ -86,7 +80,7 @@ local function find_string(buf_handle, needle, opts)
 			--should i return stop +1 to, like f does
 			start, stop = string.find(line, needle, stop + 1, false)
 			if start and stop then
-				table.insert(matches, { line = i, start = start - 1, stop = stop })
+				table.insert(matches, { line = i, start = start - 1, stop = stop } --[[@as Span]])
 			end
 		end
 	end
@@ -97,9 +91,9 @@ end
 ----1 = before
 ---0 = same pos
 ---1 = after
----@param cur_pos table
----@param target table
----@return -1 | 0 | 1
+---@param cur_pos Pos
+---@param target Pos
+---@return Dir
 local function before_or_after(cur_pos, target)
 	local dir = 0
 	if cur_pos.row == target.row + window.get_line_offset() then
@@ -122,9 +116,9 @@ local function before_or_after(cur_pos, target)
 end
 
 ---jumps to a target and returns the direction of the jump
----@param target table
----@param opts table
----@return integer dir the direction
+---@param target Pos
+---@param opts Options
+---@return Dir dir the direction
 local function jump(target, opts)
 	--- expects target pos relative to window { row= , col= }
 	-- register current pos berfore jumping
@@ -143,11 +137,11 @@ local function jump(target, opts)
 end
 
 
----@param matches table
----@param direction integer
+---@param matches Span[]
+---@param direction Dir
 ---@param x_bias integer
 ---@param y_bias integer
----@return {row: integer, col : integer} | nil
+---@return Pos | nil
 local function closest_match(matches, direction, x_bias, y_bias)
 	--returnd (row, col) of the closest (manhattan distance)  match
 	--prioritize same line?
@@ -187,7 +181,7 @@ end
 
 ---Goto the next match
 ---@param reverse boolean | nil  #reverse order, defaults to false
----@param opts table #configuration
+---@param opts Options
 local function ctrlf_next(reverse, opts)
 	reverse = reverse or false -- reverse the direction true, false
 	local dir = vim.w.ctrlf_dir -- the direction the search was first jumped
@@ -227,7 +221,7 @@ local function ctrlf_next(reverse, opts)
 end
 
 --- makes a search
----@param opts table
+---@param opts Options
 local function ctrlf(opts)
 	if not opts.enabled then
 		return
@@ -321,10 +315,13 @@ local function ctrlf(opts)
 end
 
 local M = {}
+---@param opts Options
 M.ctrlf = function(opts)
 	ctrlf(opts)
 end
 
+---@param reverse boolean
+---@param opts Options
 M.ctrlf_next = function(reverse, opts)
 	ctrlf_next(reverse, opts)
 end
