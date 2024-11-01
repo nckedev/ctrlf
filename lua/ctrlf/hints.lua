@@ -72,9 +72,12 @@ function M.create_hints(bufnr, ns_id, matches_loc, closest, opts)
 		end
 	end
 
-	local hl_closest_match = "DiffAdd"
-	local hl_other_match = "DiffText"
-	local hl_hint_char = "DiffChange"
+	local hl_closest_match = opts.colors.closest_match
+	local hl_other_match = opts.colors.match
+	local hl_hint_char = opts.colors.hint_char
+
+	--TODO: create custom hl groups, and make them overridable from config
+	--vim.api.nvim_set_hl(ns_id, name, val)
 
 	for i, v in ipairs(matches_loc or {}) do
 		-- if cursor_pos.row == v.line - 1 and cursor_pos.col == v.start then

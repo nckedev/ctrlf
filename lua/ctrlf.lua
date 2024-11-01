@@ -28,6 +28,7 @@ local config = {
 
 	--- saves the jumps in the jumplist
 	enable_jumplist = true,
+	colors = { hint_char = "DiffDelete", match = "DiffChange", closest_match = "DiffAdd" }
 }
 
 local M = {}

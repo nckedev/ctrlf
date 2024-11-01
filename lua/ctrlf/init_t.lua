@@ -75,6 +75,7 @@ local function find_string(buf_handle, needle, opts)
 		local start = 0
 		---@type integer | nil
 		local stop = 0
+		-- test string () {} [] \ /
 
 		while stop ~= nil do
 			--should i return stop +1 to, like f does
@@ -169,6 +170,21 @@ local function closest_match(matches, direction, x_bias, y_bias)
 		end
 	end
 	return best
+end
+
+---escapes a character to match litteral in a regex (inserts % before)
+---@param str string
+---@return string
+local function escape_string(str)
+	assert(#str == 1)
+	local needs_escaping = { '(', ')', '[', ']', '-' }
+
+	for _, value in ipairs(needs_escaping) do
+		if value == str then
+			return "%" .. value
+		end
+	end
+	return str
 end
 
 local function save_current_state(needle, direction, match_list, active)
@@ -275,7 +291,7 @@ local function ctrlf(opts)
 		end
 
 		if not special_key and key and not hints_key_pressed then
-			needle = needle .. key
+			needle = needle .. escape_string(key)
 			print(needle)
 		elseif special_key then
 			if string.sub(key, 2) == "kb" then
