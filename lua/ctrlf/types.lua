@@ -7,6 +7,9 @@
 ---@field enable_hints boolean
 ---@field enable_smartcase boolean
 ---@field enable_wildcard boolean
+---@field searchbox "none" | "cursor_above" | "cursor_under" | "cursor_after"
+---@field searchbox_match_count boolean
+---@field searchbox_size integer
 ---@field jump_keys_closest string[]
 ---@field jump_keys_next string[]
 ---@field wildcard_key string

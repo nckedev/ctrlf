@@ -1,4 +1,5 @@
 -- local opts = require "ctrlf.defaults"
+--
 local window = require "ctrlf.window"
 local buffer = require "ctrlf.buffer"
 local M = {}
@@ -38,6 +39,7 @@ local function generate_unique_hints(matches, opts)
 			table.insert(valid_chars, s)
 		end
 	end
+	assert(#valid_chars > 0, "no valid chars left")
 	return valid_chars
 end
 
@@ -86,6 +88,7 @@ function M.create_hints(bufnr, ns_id, matches_loc, closest, opts)
 			vim.api.nvim_buf_add_highlight(bufnr, ns_id, "CtrlfMatchClosest", v.line - 1 + offset, v.start, v.stop)
 		else
 			vim.api.nvim_buf_add_highlight(bufnr, ns_id, "CtrlfMatch", v.line - 1 + offset, v.start, v.stop)
+			-- TODO: if there is no enough hint char just create for the closest matches
 			if #hint_chars >= #matches_loc and opts.enable_hints then
 				vim.api.nvim_buf_set_extmark(bufnr, ns_id, v.line - 1 + offset, v.start,
 					{ virt_text = { { hint_chars[i], "CtrlfHintChar" } }, virt_text_pos = 'overlay' })
@@ -95,6 +98,46 @@ function M.create_hints(bufnr, ns_id, matches_loc, closest, opts)
 	end
 	-- print (vim.inspect(hint_char_with_loc))
 	return hint_char_with_loc
+end
+
+---creates a search box
+---@param bufnr integer
+---@param ns_id integer
+---@param search_string string
+---@param opts Options
+function M.create_searchbox(bufnr, ns_id, search_string, opts)
+	local function format_box(str)
+		local diff = (opts.searchbox_size or 0) - #str
+		if diff > 0 then
+			return search_string .. string.rep(" ", diff)
+		end
+		return str
+	end
+
+	local cursor_pos = window.get_cursor_pos()
+	local offset = window.get_line_offset()
+	local row_offset = 0
+	local col_offset = 0
+
+	if opts.searchbox == "none" then
+		return
+	elseif opts.searchbox == "cursor_after" then
+		row_offset = 0
+		col_offset = 1
+	elseif opts.searchbox == "cursor_above" then
+		row_offset = -1
+	elseif opts.searchbox == "cursor_under" then
+		row_offset = 1
+	end
+
+	assert(window.get_visible_lines_range().top <= cursor_pos.row + row_offset - 1,
+		"cursor index " .. cursor_pos.row + row_offset .. " too small")
+	assert(window.get_visible_lines_range().bottom >= cursor_pos.row + row_offset - 1, "cursor index too big")
+
+	-- vim.api.nvim_buf_set_extmark(bufnr, ns_id, cursor_pos.row + row_offset - 1, cursor_pos.col + col_offset,
+	-- 	{ virt_text = { { search_string .. " ", "CtrlfHintChar" } }, virt_text_pos = 'overlay', strict = false })
+	vim.api.nvim_buf_set_extmark(bufnr, ns_id, cursor_pos.row + row_offset - 1, cursor_pos.col + col_offset,
+		{ virt_text = { { format_box(search_string), "CtrlfHintChar" } }, virt_text_win_col = cursor_pos.col + col_offset, strict = true })
 end
 
 function M.clear_hints(ns_id)
