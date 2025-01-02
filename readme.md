@@ -1,3 +1,3 @@
 CtrlF
 
-search and jump :o
+neovim plugin for searching and jumping to target
