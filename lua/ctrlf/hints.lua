@@ -43,6 +43,7 @@ local function generate_unique_hints(matches, opts)
 	return valid_chars
 end
 
+
 --- create namespace, returns id
 M.create_namespace = function(name)
 	return vim.api.nvim_create_namespace(name)
@@ -74,10 +75,6 @@ function M.create_hints(bufnr, ns_id, matches_loc, closest, opts)
 		end
 	end
 
-	local hl_closest_match = opts.colors.closest_match
-	local hl_other_match = opts.colors.match
-	local hl_hint_char = opts.colors.hint_char
-
 	--TODO: create custom hl groups, and make them overridable from config
 	--vim.api.nvim_set_hl(ns_id, name, val)
 
@@ -100,22 +97,26 @@ function M.create_hints(bufnr, ns_id, matches_loc, closest, opts)
 	return hint_char_with_loc
 end
 
+---comment
+---@param ns_id integer
+---@param opts Options
+function M.create_hl_grups(ns_id, opts)
+	-- prio
+	-- 1 config
+	-- 2 color theme
+	-- 3 defaults
+end
+
+local function create_from_config_or_colorscheme(name, o)
+
+end
 ---creates a search box
 ---@param bufnr integer
 ---@param ns_id integer
 ---@param search_string string
 ---@param opts Options
 function M.create_searchbox(bufnr, ns_id, search_string, opts)
-	local function format_box(str)
-		local diff = (opts.searchbox_size or 0) - #str
-		if diff > 0 then
-			return search_string .. string.rep(" ", diff)
-		end
-		return str
-	end
-
-	local cursor_pos = window.get_cursor_pos()
-	local offset = window.get_line_offset()
+	local hl_search_box = "CtrlfSearchbox"
 	local row_offset = 0
 	local col_offset = 0
 
@@ -130,6 +131,17 @@ function M.create_searchbox(bufnr, ns_id, search_string, opts)
 		row_offset = 1
 	end
 
+	local function format_box(str)
+		local diff = (opts.searchbox_size or 0) - #str
+		if diff > 0 then
+			return search_string .. string.rep(" ", diff)
+		end
+		return str
+	end
+
+	local cursor_pos = window.get_cursor_pos()
+	local offset = window.get_line_offset()
+
 	assert(window.get_visible_lines_range().top <= cursor_pos.row + row_offset - 1,
 		"cursor index " .. cursor_pos.row + row_offset .. " too small")
 	assert(window.get_visible_lines_range().bottom >= cursor_pos.row + row_offset - 1, "cursor index too big")
@@ -137,7 +149,7 @@ function M.create_searchbox(bufnr, ns_id, search_string, opts)
 	-- vim.api.nvim_buf_set_extmark(bufnr, ns_id, cursor_pos.row + row_offset - 1, cursor_pos.col + col_offset,
 	-- 	{ virt_text = { { search_string .. " ", "CtrlfHintChar" } }, virt_text_pos = 'overlay', strict = false })
 	vim.api.nvim_buf_set_extmark(bufnr, ns_id, cursor_pos.row + row_offset - 1, cursor_pos.col + col_offset,
-		{ virt_text = { { format_box(search_string), "CtrlfHintChar" } }, virt_text_win_col = cursor_pos.col + col_offset, strict = true })
+		{ virt_text = { { format_box(search_string), hl_search_box } }, virt_text_win_col = cursor_pos.col + col_offset, strict = true })
 end
 
 function M.clear_hints(ns_id)

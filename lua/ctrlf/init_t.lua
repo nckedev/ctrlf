@@ -75,7 +75,11 @@ local function find_string(buf_handle, needle, opts)
 
         while stop ~= nil do
             --should i return stop +1 to, like f does
+            -- print(needle)
             start, stop = string.find(line, needle, stop + 1, false)
+
+            -- BUG: fasntar här om man har två wildcards i början av en söksträng
+            -- funkar med ett men inte två. see issue:3
             if start and stop then
                 table.insert(matches, { line = i, start = start - 1, stop = stop } --[[@as Span]])
             end
@@ -296,7 +300,6 @@ local function ctrlf(opts)
             if string.sub(key, 2) == "kb" then
                 needle = string.sub(needle, 0, #needle - 1)
                 if needle == "" then
-                    print("needle är 0")
                     hints.create_searchbox(0, ns_id, needle, opts)
                     vim.api.nvim_command("redraw")
                 end
