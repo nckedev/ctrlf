@@ -148,7 +148,9 @@ function M.create_searchbox(bufnr, ns_id, search_string, opts)
 
 	-- vim.api.nvim_buf_set_extmark(bufnr, ns_id, cursor_pos.row + row_offset - 1, cursor_pos.col + col_offset,
 	-- 	{ virt_text = { { search_string .. " ", "CtrlfHintChar" } }, virt_text_pos = 'overlay', strict = false })
-	vim.api.nvim_buf_set_extmark(bufnr, ns_id, cursor_pos.row + row_offset - 1, cursor_pos.col + col_offset,
+
+	-- TODO: textboxen hamnar inte på rätt plats för rader med mer än 0 tecken
+	vim.api.nvim_buf_set_extmark(bufnr, ns_id, cursor_pos.row + row_offset - 1, 0, -- cursor_pos.col + col_offset,
 		{ virt_text = { { format_box(search_string), hl_search_box } }, virt_text_win_col = cursor_pos.col + col_offset, strict = true })
 end
 
