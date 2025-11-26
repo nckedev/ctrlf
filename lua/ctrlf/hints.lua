@@ -72,6 +72,7 @@ function M.create_hints(bufnr, ns_id, matches_loc, closest, opts)
 	if opts.enable_gray_background then
 		for line = win.top, win.bottom, 1 do
 			vim.api.nvim_buf_add_highlight(bufnr, ns_id, "Comment", line, 0, -1)
+			-- vim.api.nvim_buf_set_extmark(bufnr, ns_id, "Comment", line, 0, -1)
 		end
 	end
 
@@ -120,15 +121,20 @@ function M.create_searchbox(bufnr, ns_id, search_string, opts)
 	local row_offset = 0
 	local col_offset = 0
 
+	opts.searchbox = "cursor_after"
+
 	if opts.searchbox == "none" then
 		return
 	elseif opts.searchbox == "cursor_after" then
 		row_offset = 0
-		col_offset = 1
+		col_offset = 0
 	elseif opts.searchbox == "cursor_above" then
 		row_offset = -1
 	elseif opts.searchbox == "cursor_under" then
 		row_offset = 1
+	elseif opts.searchbox == "bottom" then
+		-- hack: this will be clamped later
+		row_offset = 9999
 	end
 
 	local function format_box(str)
@@ -139,18 +145,23 @@ function M.create_searchbox(bufnr, ns_id, search_string, opts)
 		return str
 	end
 
+	local function clamp(x)
+		local max = window.get_visible_lines_range().height
+		if x > max then return max - 1 end
+		if x <= 0 then return 0 end
+		return x
+	end
+
 	local cursor_pos = window.get_cursor_pos()
 	local offset = window.get_line_offset()
 
-	assert(window.get_visible_lines_range().top <= cursor_pos.row + row_offset - 1,
-		"cursor index " .. cursor_pos.row + row_offset .. " too small")
-	assert(window.get_visible_lines_range().bottom >= cursor_pos.row + row_offset - 1, "cursor index too big")
+
 
 	-- vim.api.nvim_buf_set_extmark(bufnr, ns_id, cursor_pos.row + row_offset - 1, cursor_pos.col + col_offset,
 	-- 	{ virt_text = { { search_string .. " ", "CtrlfHintChar" } }, virt_text_pos = 'overlay', strict = false })
 
 	-- TODO: textboxen hamnar inte på rätt plats för rader med mer än 0 tecken
-	vim.api.nvim_buf_set_extmark(bufnr, ns_id, cursor_pos.row + row_offset - 1, 0, -- cursor_pos.col + col_offset,
+	vim.api.nvim_buf_set_extmark(bufnr, ns_id, clamp(cursor_pos.row + row_offset - 1), 0, -- cursor_pos.col + col_offset,
 		{ virt_text = { { format_box(search_string), hl_search_box } }, virt_text_win_col = cursor_pos.col + col_offset, strict = true })
 end
 

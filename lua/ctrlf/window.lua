@@ -24,11 +24,11 @@ function M.clamp_row(row)
 end
 
 ---@param window integer | nil
----@return {top: integer, bottom: integer, width: integer}
+---@return {top: integer, bottom: integer, width: integer, height: integer}
 function M.get_visible_lines_range(window)
     window = window or vim.api.nvim_get_current_win()
     local win_info = vim.fn.getwininfo(window)[1]
-    local win = { top = win_info.topline, bottom = win_info.botline, width = win_info.width }
+    local win = { top = win_info.topline, bottom = win_info.botline, width = win_info.width, height = win_info.height }
     return win
 end
 
@@ -37,6 +37,13 @@ function M.get_line_offset()
     local window = vim.api.nvim_get_current_win()
     local win_info = vim.fn.getwininfo(window)[1]
     return win_info.topline - 1
+end
+
+---@return integer
+function M.get_last_line()
+    local window = vim.api.nvim_get_current_win()
+    local win_info = vim.fn.getwininfo(window)[1]
+    return win_info.botline - 1
 end
 
 return M

@@ -75,7 +75,6 @@ local function find_string(buf_handle, needle, opts)
 
         while stop ~= nil do
             --should i return stop +1 to, like f does
-            -- print(needle)
             start, stop = string.find(line, needle, stop + 1, false)
 
             -- BUG: fasntar här om man har två wildcards i början av en söksträng
