@@ -30,6 +30,25 @@ local function get_input(prompt)
     return inp
 end
 
+---@param loc Span
+---@param opts Options
+---@return integer
+local function distance_from_cursor(loc, opts)
+    local cursor = window.get_cursor_pos()
+    local dir = 1
+    local x_b = 10
+    local y_b = 1
+    local same_line_b = 100
+    local offset = window.get_line_offset()
+    if cursor.row < loc.line + offset or cursor.col < loc.start then
+        dir = -1
+    end
+
+    local distance = (x_b * math.abs(cursor.row - (loc.line + offset)) + y_b * math.abs(cursor.col - loc.start)) * dir
+
+    return distance
+end
+
 local function get_input_wo_prompt()
     -- esc = 27
     -- space = 32
@@ -45,13 +64,13 @@ end
 ---@param buf_handle integer
 ---@param needle string
 ---@param opts Options
----@return Span[]
+---@return Match[]
 local function find_string(buf_handle, needle, opts)
     --return list of (row,col) of first character where needle is founqd
 
     local buf = buffer.get_buf(buf_handle)
-    ---@type Span[]
-    local matches = {}
+
+    local matches = {} --[[@as Match[] ]]
     local do_smartcase = false
 
     if opts.enable_smartcase and not string.match(needle, "%u") then
@@ -80,7 +99,11 @@ local function find_string(buf_handle, needle, opts)
             -- BUG: fasntar här om man har två wildcards i början av en söksträng
             -- funkar med ett men inte två. see issue:3
             if start and stop then
-                table.insert(matches, { line = i, start = start - 1, stop = stop } --[[@as Span]])
+                local loc = { line = i, start = start - 1, stop = stop } --[[@as Span]]
+                local distance = distance_from_cursor(loc, opts)
+                local match = { line = loc.line, start = loc.start, stop = loc.stop, distance = distance }
+                table.insert(matches, match)
+                table.sort(matches, function(a, b) return math.abs(a.distance) < math.abs(b.distance) end)
             end
         end
     end
@@ -131,8 +154,8 @@ local function jump(target, opts)
     local cur_pos = window.get_cursor_pos()
 
     dir = before_or_after(cur_pos, target)
+    -- do the actual jump here!
     vim.api.nvim_win_set_cursor(vim.api.nvim_get_current_win(), { target.row + window.get_line_offset(), target.col })
-    -- print(vim.inspect(target))
     return dir
 end
 
@@ -141,9 +164,9 @@ end
 ---@param direction Dir
 ---@param x_bias integer
 ---@param y_bias integer
----@return Pos | nil
+---@return Match[] | nil
 local function closest_match(matches, direction, x_bias, y_bias)
-    --returnd (row, col) of the closest (manhattan distance)  match
+    --returns a sorted list (closest first) of locations or the matches
     --prioritize same line?
     -- direction -1 for backwards, 0 for both ways and 1 for forward
     -- abs(x1 -x2) + abs(y1 - y2)
@@ -154,22 +177,30 @@ local function closest_match(matches, direction, x_bias, y_bias)
     local dir = direction or 0
     local x_b = x_bias or 10
     local y_b = y_bias or 1
+    local same_line_b = 100
     local pos = window.get_cursor_pos()
     local min = 99999999
     local best = {}
 
     -- print("matches: " .. #matches)
 
+    local distances = {}
+
     for _, v in pairs(matches) do
         local candidate = x_b * math.abs(pos.row - (v.line + window.get_line_offset()))
             + y_b * math.abs(pos.col - v.start)
-        if candidate < min then
-            min = candidate
-            best = { row = v.line, col = v.start }
-        end
+        local item = { line = v.line, start = v.start, stop = v.stop, score = candidate } --[[@as Match]]
+        table.insert(distances, item)
+        -- if candidate < min then
+        --     min = candidate
+        --     best = { row = v.line, col = v.start, distance_score = candidate }
+        -- end
     end
-    return best
+
+    table.sort(distances, function(a, b) return a.distance_score < b.distance_score end)
+    return distances
 end
+
 
 ---escapes a character to match litteral in a regex (inserts % before)
 ---@param str string
@@ -279,6 +310,7 @@ local function ctrlf(opts)
             if opts.enable_hints then
                 for _, v in pairs(hints_loc) do
                     if key == v.char then
+                        -- selecting the target from the hint chars here!
                         target = { row = v.row - window.get_line_offset() + 1, col = v.col }
                         hints_key_pressed = true
                         break
@@ -312,15 +344,15 @@ local function ctrlf(opts)
         if needle ~= "" and needle ~= vim.api.nvim_replace_termcodes(opts.wildcard_key, true, false, true) then
             hints.clear_hints(ns_id)
             matches = find_string(buf_handle, needle, opts)
-            target = closest_match(matches, 0, 10, 1) or {}
-            hints_loc = hints.create_hints(0, ns_id, matches, target, opts)
+            -- target = closest_match(matches, 0, 10, 1) or {}
+            -- if the the closest target is selected then we dont have a target, so set the target to the first
+            -- in the sorted list of matches
+            if #matches > 0 then
+                target = { row = matches[1].line, col = matches[1].start }
+            end
+            hints_loc = hints.create_hints(0, ns_id, matches, opts)
             hints.create_searchbox(0, ns_id, needle, opts)
             vim.api.nvim_command("redraw")
-
-            ---check if last input was a hint char
-            -- TODO need to remove the last char if it is a hint char
-            -- otherwise it will interfere with the search
-            -- but when can we do that?
         end
     end --end of while 1
 
@@ -328,7 +360,7 @@ local function ctrlf(opts)
     hints.clear_hints(ns_id)
 
     if #matches > 0 and not cancel then
-        --closest = closest_match(matches)
+        assert(target ~= {}, "target is empty")
         local dir = jump(target or {}, opts)
         save_current_state(needle, dir, matches, true)
     else

@@ -8,7 +8,7 @@ local M = {}
 --vim.api.nvim_buf_add_highlight(buffer,nsid,hlgrp,line,colstart,colend)
 --namespace
 
----@param matches Span[]
+---@param matches Match[]
 ---@param opts Options
 ---@return string[] # viable hint characters
 local function generate_unique_hints(matches, opts)
@@ -29,9 +29,9 @@ local function generate_unique_hints(matches, opts)
 	---@type string[]
 	local valid_chars = {}
 	for _, v in pairs(matches) do
+		-- ban the character right after the matched sequence
 		s = string.sub(buf[v.line], v.stop + 1, v.stop + 1)
 		banned_chars[s] = true
-		-- table.insert(banned_chars, s)
 	end
 	for i = 1, hintchars:len(), 1 do
 		local s = string.sub(hintchars, i, i)
@@ -39,7 +39,7 @@ local function generate_unique_hints(matches, opts)
 			table.insert(valid_chars, s)
 		end
 	end
-	assert(#valid_chars > 0, "no valid chars left")
+	assert(#valid_chars > 0, "no valid chars")
 	return valid_chars
 end
 
@@ -51,11 +51,10 @@ end
 ---comment
 ---@param bufnr integer
 ---@param ns_id integer
----@param matches_loc {line : integer, start: integer, stop: integer} | nil
----@param closest {row: integer, col : integer}
+---@param matches {line : integer, start: integer, stop: integer} | nil
 ---@param opts Options
 ---@return HintChar
-function M.create_hints(bufnr, ns_id, matches_loc, closest, opts)
+function M.create_hints(bufnr, ns_id, matches, opts)
 	--vim.api.nvim_buf_set_extmark(0, hl_ns, hint.line, hint.col - 1, { virt_text = { { hint.hint, "HopNextKey" } }; virt_text_pos = 'overlay' })
 	--nvim_buf_set_extmark({buffer}, {ns_id}, {line}, {col}, {opts})
 	--RedrawDebugRecompose
@@ -66,7 +65,7 @@ function M.create_hints(bufnr, ns_id, matches_loc, closest, opts)
 	local win = window.get_visible_lines_range()
 	local hint_chars = {}
 	local hint_char_with_loc = {} --  k: char v: {row, col}
-	hint_chars = generate_unique_hints(matches_loc or {}, opts)
+	hint_chars = generate_unique_hints(matches or {}, opts)
 	--print(#hint_chars , #matches_loc)
 
 	if opts.enable_gray_background then
@@ -79,15 +78,17 @@ function M.create_hints(bufnr, ns_id, matches_loc, closest, opts)
 	--TODO: create custom hl groups, and make them overridable from config
 	--vim.api.nvim_set_hl(ns_id, name, val)
 
-	for i, v in ipairs(matches_loc or {}) do
+	for i, v in ipairs(matches or {}) do
 		-- if cursor_pos.row == v.line - 1 and cursor_pos.col == v.start then
 		-- 	end
-		if closest.row == v.line and closest.col == v.start then
+
+		-- set the first item to the colsest match
+		if i == 1 then
 			vim.api.nvim_buf_add_highlight(bufnr, ns_id, "CtrlfMatchClosest", v.line - 1 + offset, v.start, v.stop)
 		else
 			vim.api.nvim_buf_add_highlight(bufnr, ns_id, "CtrlfMatch", v.line - 1 + offset, v.start, v.stop)
 			-- TODO: if there is no enough hint char just create for the closest matches
-			if #hint_chars >= #matches_loc and opts.enable_hints then
+			if i <= #hint_chars and opts.enable_hints then
 				vim.api.nvim_buf_set_extmark(bufnr, ns_id, v.line - 1 + offset, v.start,
 					{ virt_text = { { hint_chars[i], "CtrlfHintChar" } }, virt_text_pos = 'overlay' })
 				table.insert(hint_char_with_loc, { char = hint_chars[i], row = v.line - 1 + offset, col = v.start })
@@ -146,7 +147,7 @@ function M.create_searchbox(bufnr, ns_id, search_string, opts)
 	end
 
 	local function clamp(x)
-		local max = window.get_visible_lines_range().height
+		local max = window.get_visible_lines_range().bottom
 		if x > max then return max - 1 end
 		if x <= 0 then return 0 end
 		return x
@@ -154,8 +155,6 @@ function M.create_searchbox(bufnr, ns_id, search_string, opts)
 
 	local cursor_pos = window.get_cursor_pos()
 	local offset = window.get_line_offset()
-
-
 
 	-- vim.api.nvim_buf_set_extmark(bufnr, ns_id, cursor_pos.row + row_offset - 1, cursor_pos.col + col_offset,
 	-- 	{ virt_text = { { search_string .. " ", "CtrlfHintChar" } }, virt_text_pos = 'overlay', strict = false })
